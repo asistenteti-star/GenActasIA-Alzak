@@ -112,12 +112,14 @@ nav{background:var(--white);border-bottom:3px solid var(--green);height:56px;dis
 .mact{display:flex;gap:8px;justify-content:flex-end}
 
 @media print{
-  nav,.upload-panel,.acta-actions,.status,.x,.add,.mbg{display:none!important}
+  nav,.upload-panel,.acta-actions,.status,.x,.add,.mbg,.sig-clr,#login-screen{display:none!important}
   body{background:#fff}.page{padding:0;max-width:100%}
   .acta-section{display:block!important}
   .acta-wrap{border:none;box-shadow:none;border-radius:0}
   [contenteditable]{background:none!important;box-shadow:none!important;padding:0!important}
   .at td,.at th{font-size:10px;padding:4px 6px}
+  .sig-canvas{border:1px solid #ddd!important;background:#fff!important}
+  @page{margin:12mm}
 }
 </style>
 
@@ -332,8 +334,8 @@ nav{background:var(--white);border-bottom:3px solid var(--green);height:56px;dis
 const CO = 'ALZAK Foundation';
 const SR = /\bSAC\b/g;
 
-// Google Gemini API (uso interno)
-const GEMINI_KEY    = 'AIzaSyCtXPifO33dyG8z8scbdljITeTjCewoKa0';
+// La API key vive en Vercel env vars (process.env.GEMINI_API_KEY).
+// El frontend habla con /api/gemini, que proxea a Google.
 const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];  // primario + fallback para 503
 
 // ── CORRECTOR DE NOMBRE ALZAK ────────────────────────────────
@@ -415,7 +417,7 @@ async function generate() {
 }
 
 async function callGemini(model, parts) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
+  const url = `/api/gemini?model=${encodeURIComponent(model)}`;
   const payload = {
     system_instruction: { parts: [{ text: SYS }] },
     contents: [{ role: 'user', parts }],
@@ -762,35 +764,10 @@ function gt(key) {
 
 // ── PDF ─────────────────────────────────────────────────────
 function exportPDF() {
-  // Primero sustituimos cada <canvas> de firma por un <img> con su dataURL,
-  // porque cloneNode no copia los pixeles del canvas.
-  const originals = document.querySelectorAll('.sig-canvas');
-  const placeholders = [];
-  originals.forEach(c => {
-    const img = document.createElement('img');
-    img.src = c.toDataURL('image/png');
-    img.style.cssText = 'width:160px;height:52px;display:block;border:1px solid #D0D0D0;border-radius:4px;background:#fafafa';
-    img.className = 'sig-img-print';
-    c.parentNode.insertBefore(img, c);
-    c.style.display = 'none';
-    placeholders.push({ canvas: c, img });
-  });
-
-  const w = window.open('', '_blank');
-  const restore = () => placeholders.forEach(p => { p.img.remove(); p.canvas.style.display = ''; });
-
-  if (!w) {
-    window.print();
-    setTimeout(restore, 500);
-    return;
-  }
-  const html = document.documentElement.cloneNode(true);
-  html.querySelectorAll('nav,.upload-panel,.acta-actions,.status,.x,.add,.mbg,#login-screen,.sig-clr').forEach(el => el.style.display='none');
-  html.querySelector('#acta').style.display = 'block';
-  w.document.write('<!DOCTYPE html>' + html.outerHTML);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); restore(); }, 800);
+  // Imprime directamente el documento actual. El @media print CSS oculta
+  // lo que no debe aparecer (nav, upload, botones), y los canvas de firma
+  // se imprimen directamente desde el DOM vivo.
+  window.print();
 }
 
 // ── WORD ────────────────────────────────────────────────────
