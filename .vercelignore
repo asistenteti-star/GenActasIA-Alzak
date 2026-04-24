@@ -1,0 +1,4 @@
+# Archivos internos que no deben publicarse en el deploy
+docs/
+.gitignore
+.vercelignore
