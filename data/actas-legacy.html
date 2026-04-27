@@ -112,7 +112,7 @@ nav{background:var(--white);border-bottom:3px solid var(--green);height:56px;dis
 .mact{display:flex;gap:8px;justify-content:flex-end}
 
 @media print{
-  nav,.upload-panel,.acta-actions,.status,.x,.add,.mbg,.sig-clr,#login-screen{display:none!important}
+  nav,.upload-panel,.acta-actions,.status,.x,.add,.mbg,.sig-clr{display:none!important}
   body{background:#fff}.page{padding:0;max-width:100%}
   .acta-section{display:block!important}
   .acta-wrap{border:none;box-shadow:none;border-radius:0}
@@ -123,92 +123,7 @@ nav{background:var(--white);border-bottom:3px solid var(--green);height:56px;dis
 }
 </style>
 
-<style>
-#login-screen{
-  position:fixed;inset:0;z-index:9999;
-  background:linear-gradient(135deg,#E6F7EE 0%,#ffffff 60%,#f0fff6 100%);
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;
-}
-#login-screen.hidden{display:none}
-.login-box{
-  background:#fff;border-radius:16px;
-  box-shadow:0 8px 40px rgba(0,166,81,.18),0 2px 12px rgba(0,0,0,.08);
-  padding:40px 40px 32px;width:100%;max-width:400px;
-  border-top:4px solid #00A651;
-}
-.login-logo{display:flex;align-items:baseline;gap:2px;margin-bottom:4px;justify-content:center}
-.login-logo .al{font-size:28px;font-weight:800;color:#00A651;letter-spacing:-.5px}
-.login-logo .zak{font-size:28px;font-weight:800;color:#2D2D2D;letter-spacing:-.5px}
-.login-sub{text-align:center;font-size:11px;color:#888;margin-bottom:28px;letter-spacing:.3px}
-.login-box h2{text-align:center;font-size:16px;font-weight:700;color:#2D2D2D;margin-bottom:6px}
-.login-box p{text-align:center;font-size:12px;color:#666;margin-bottom:24px}
-.login-field{margin-bottom:14px;position:relative}
-.login-field label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:5px;letter-spacing:.3px;text-transform:uppercase}
-.pw-toggle{position:absolute;right:10px;top:34px;background:none;border:none;cursor:pointer;padding:6px;display:flex;align-items:center;justify-content:center;color:#999;border-radius:4px;transition:color .15s}
-.pw-toggle:hover{color:#00A651;background:rgba(0,166,81,.08)}
-.pw-toggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
-.login-field input.pw{padding-right:38px}
-.login-field input{
-  width:100%;padding:10px 12px;border:1.5px solid #D0D0D0;
-  border-radius:8px;font-size:13px;outline:none;transition:border .2s,box-shadow .2s;
-  font-family:inherit;color:#2D2D2D;
-}
-.login-field input:focus{border-color:#00A651;box-shadow:0 0 0 3px rgba(0,166,81,.15)}
-.login-btn{
-  width:100%;padding:11px;background:#00A651;border:none;border-radius:8px;
-  color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;
-  transition:background .2s;letter-spacing:.3px;
-}
-.login-btn:hover{background:#007A3D}
-.login-err{
-  display:none;background:#FEF2F2;border:1px solid #FECACA;
-  border-radius:6px;padding:9px 12px;font-size:12px;color:#991B1B;
-  text-align:center;margin-top:12px;
-}
-.login-err.show{display:block}
-.login-forgot{text-align:center;margin-top:16px}
-.login-forgot a{font-size:11px;color:#00A651;text-decoration:none}
-.login-forgot a:hover{text-decoration:underline}
-.login-footer{text-align:center;margin-top:20px;font-size:10px;color:#AAAAAA}
-</style>
-</head>
 <body>
-
-<!-- ── PANTALLA DE LOGIN ─────────────────────────────────── -->
-<div id="login-screen">
-  <div class="login-box">
-    <div style="text-align:center;margin-bottom:20px"><img src="/alzak-logo.png" alt="ALZAK Foundation" style="height:56px;object-fit:contain"></div>
-    <h2>Generador de Actas</h2>
-    <p>Ingresa tus credenciales para continuar</p>
-
-    <div class="login-field">
-      <label>Usuario</label>
-      <input type="text" id="li-user" placeholder="usuario" autocomplete="username" />
-    </div>
-    <div class="login-field">
-      <label>Contraseña</label>
-      <input class="pw" type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password"
-             onkeydown="if(event.key==='Enter') doLogin()" />
-      <button type="button" class="pw-toggle" id="pwToggle" onclick="togglePw()" aria-label="Mostrar contraseña" title="Mostrar / ocultar contraseña">
-        <svg id="pwEye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-      </button>
-    </div>
-
-    <button class="login-btn" onclick="doLogin()">Ingresar →</button>
-
-    <div class="login-err" id="li-err">Usuario o contraseña incorrectos. Intenta de nuevo.</div>
-
-    <div class="login-forgot">
-      <a href="mailto:nralvis@alzakfoundation.org?subject=Solicitud%20cambio%20de%20contrase%C3%B1a%20-%20Generador%20de%20Actas&body=Hola%2C%20solicito%20el%20cambio%20de%20contrase%C3%B1a%20para%20el%20Generador%20de%20Actas%20de%20ALZAK%20Foundation.%0A%0AUsuario%3A%20%0ANombre%3A%20%0A%0AGracias.">
-        🔑 ¿Olvidaste tu contraseña? Solicitar cambio
-      </a>
-    </div>
-
-    <div class="login-footer">ALZAK Foundation · Uso interno</div>
-  </div>
-</div>
-<!-- ─────────────────────────────────────────────────────── -->
 
 <nav>
   <img src="/alzak-logo.png" alt="ALZAK Foundation" style="height:36px;object-fit:contain">
@@ -374,22 +289,6 @@ const CFG = {
 window.onload = () => {
   Object.keys(CFG).forEach(k => renderT(k, []));
 };
-
-// ── TOGGLE MOSTRAR CONTRASEÑA (login) ───────────────────────
-function togglePw() {
-  const i = document.getElementById('li-pass');
-  const t = document.getElementById('pwToggle');
-  const e = document.getElementById('pwEye');
-  if (i.type === 'password') {
-    i.type = 'text';
-    t.setAttribute('aria-label', 'Ocultar contraseña');
-    e.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
-  } else {
-    i.type = 'password';
-    t.setAttribute('aria-label', 'Mostrar contraseña');
-    e.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>';
-  }
-}
 
 // ── UPLOAD ──────────────────────────────────────────────────
 let pendingFile = null;
@@ -1069,50 +968,6 @@ async function exportWord() {
 
   if (btn) { btn.textContent = origText; btn.disabled = false; }
 }
-
-// ── LOGIN ────────────────────────────────────────────────────
-const USERS = {
-  'lmoyano': 'e81e1ade0408db76032904e80b9bca07393e72d31d4a8fa97fe270ffe3fd2884'
-};
-
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-async function doLogin() {
-  const user = document.getElementById('li-user').value.trim().toLowerCase();
-  const pass = document.getElementById('li-pass').value;
-  const err  = document.getElementById('li-err');
-  err.classList.remove('show');
-
-  if (!user || !pass) {
-    err.textContent = 'Completa usuario y contraseña.';
-    err.classList.add('show'); return;
-  }
-  if (!USERS[user]) {
-    err.textContent = 'Usuario o contraseña incorrectos. Intenta de nuevo.';
-    err.classList.add('show'); return;
-  }
-
-  const hash = await sha256(pass);
-  if (hash !== USERS[user]) {
-    err.textContent = 'Usuario o contraseña incorrectos. Intenta de nuevo.';
-    err.classList.add('show');
-    document.getElementById('li-pass').value = '';
-    document.getElementById('li-pass').focus();
-    return;
-  }
-
-  sessionStorage.setItem('alzak_foundation_auth', '1');
-  document.getElementById('login-screen').classList.add('hidden');
-}
-
-(function checkSession() {
-  if (sessionStorage.getItem('alzak_foundation_auth') === '1') {
-    document.getElementById('login-screen').classList.add('hidden');
-  }
-})();
 
 </script>
 </body>

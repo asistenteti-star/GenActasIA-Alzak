@@ -7,7 +7,7 @@ Thumbs.db
 .idea/
 *.swp
 
-# Dependencias (por si en el futuro se agregan)
+# Dependencias
 node_modules/
 
 # Entornos
@@ -15,5 +15,14 @@ node_modules/
 .env.local
 .env.*.local
 
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# TypeScript
+*.tsbuildinfo
+
 # Vercel
 .vercel
+.env*.local
