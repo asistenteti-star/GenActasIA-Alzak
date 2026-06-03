@@ -39,6 +39,9 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     path === "/login" ||
     path.startsWith("/auth/") ||
+    // El cron de keep-alive no tiene sesión; se autentica con CRON_SECRET
+    // dentro del propio route handler, así que no debe redirigir a /login.
+    path === "/api/keep-alive" ||
     path === "/alzak-logo.png" ||
     path === "/favicon.ico";
 
