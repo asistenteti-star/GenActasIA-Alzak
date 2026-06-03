@@ -8,15 +8,47 @@ export default function LoginButton() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Comprueba que el backend de Supabase responde antes de redirigir el
+  // navegador. Con `mode: "no-cors"` un servidor vivo resuelve (respuesta
+  // opaca) y solo un fallo de red real (proyecto pausado / DNS caído) lanza.
+  async function supabaseIsReachable(): Promise<boolean> {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!url) return false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      await fetch(`${url}/auth/v1/health`, {
+        mode: "no-cors",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   async function handleSignIn() {
     setLoading(true);
     setError(null);
     try {
+      if (!(await supabaseIsReachable())) {
+        setError(
+          "El servicio de inicio de sesión no está disponible en este momento. Inténtalo de nuevo en unos minutos.",
+        );
+        setLoading(false);
+        return;
+      }
+
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          // Controlamos la redirección manualmente tras el preflight.
+          skipBrowserRedirect: true,
           queryParams: {
             // Sugiere a Google filtrar al dominio del Workspace
             hd: ALLOWED_DOMAIN,
@@ -26,6 +58,8 @@ export default function LoginButton() {
         },
       });
       if (error) throw error;
+      if (!data?.url) throw new Error("No se obtuvo la URL de autenticación.");
+      window.location.assign(data.url);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error iniciando sesión");
       setLoading(false);
