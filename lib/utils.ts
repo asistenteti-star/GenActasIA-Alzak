@@ -1,3 +1,11 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+/** Une clases de Tailwind resolviendo conflictos (usado por shadcn/ui). */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
 export const ALLOWED_DOMAIN = "alzakfoundation.org";
 export const ADMIN_EMAIL = "asistenteti@alzakfoundation.org";
 
