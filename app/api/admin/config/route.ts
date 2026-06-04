@@ -12,11 +12,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  let body: { provider?: string; gemini_model?: string; claude_model?: string };
+  let body: {
+    provider?: string;
+    gemini_model?: string;
+    claude_model?: string;
+    claude_api_key?: string;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+  let secretHandled = false;
+
+  // Gestión de la API key de Claude (secreto, va a app_secrets — RLS solo-admin).
+  // "" o null borra la key; un valor la guarda/actualiza.
+  if (body.claude_api_key !== undefined) {
+    const v = (body.claude_api_key ?? "").trim();
+    if (v === "") {
+      const { error } = await supabase.from("app_secrets").delete().eq("key", "anthropic_api_key");
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    } else {
+      const { error } = await supabase
+        .from("app_secrets")
+        .upsert({ key: "anthropic_api_key", value: v, updated_by: profile.id }, { onConflict: "key" });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    secretHandled = true;
   }
 
   const updates: Record<string, string | Date> = {};
@@ -41,12 +65,13 @@ export async function POST(request: Request) {
   }
 
   if (Object.keys(updates).length === 0) {
+    // Solo se cambió la API key (sin cambios en app_config): es válido.
+    if (secretHandled) return NextResponse.json({ ok: true });
     return NextResponse.json({ error: "Sin cambios" }, { status: 400 });
   }
 
   updates.updated_by = profile.id;
 
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from("app_config")
     .update(updates)
@@ -58,5 +83,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ config: data });
+  return NextResponse.json({ config: data, ok: true });
 }

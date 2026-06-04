@@ -343,9 +343,9 @@ function updateGenBtn() {
   if (btn) btn.disabled = !(pendingFile && ENT);
 }
 
-// La API key vive en Vercel env vars (process.env.GEMINI_API_KEY).
-// El frontend habla con /api/gemini, que proxea a Google.
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];  // primario + fallback para 503
+// El frontend habla con /api/ai, que decide el proveedor (Gemini por defecto,
+// o Claude si el admin lo activa) y el modelo según la config del servidor.
+// Las API keys viven en el servidor (env vars / app_secrets), nunca aquí.
 
 // ── CORRECTOR DE NOMBRE ALZAK ────────────────────────────────
 // Corrige variaciones erróneas que la IA puede generar por
@@ -447,31 +447,27 @@ async function generate() {
   await run(pendingFile);
 }
 
-async function callGemini(model, parts) {
-  const url = `/api/gemini?model=${encodeURIComponent(model)}`;
+async function callAI(parts) {
   const payload = {
     system_instruction: { parts: [{ text: buildSYS() }] },
     contents: [{ role: 'user', parts }],
     generationConfig: { temperature: 0.1, maxOutputTokens: 32768, responseMimeType: 'application/json' }
   };
-  // En 2.5-flash el "thinking" consume del budget de salida — para extracción estructurada lo desactivamos
-  if (model.startsWith('gemini-2.5')) {
-    payload.generationConfig.thinkingConfig = { thinkingBudget: 0 };
-  }
   const body = JSON.stringify(payload);
-  // Reintenta en 429/503 con backoff: 2s, 4s
+  // Reintenta en 429/503 con backoff: 2s, 4s. El fallback de modelo lo maneja
+  // el servidor; aquí solo reintentamos ante saturación transitoria.
   const delays = [0, 2000, 4000];
   let lastErr;
   for (let i = 0; i < delays.length; i++) {
     if (delays[i]) await new Promise(r => setTimeout(r, delays[i]));
-    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    const resp = await fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
     if (resp.ok) return resp.json();
     const errJson = await resp.json().catch(() => ({}));
     lastErr = new Error(errJson.error?.message || 'Error ' + resp.status);
     lastErr.status = resp.status;
-    console.warn(`[Gemini ${model}] intento ${i+1}/${delays.length} → ${resp.status}: ${lastErr.message}`);
+    console.warn(`[IA] intento ${i+1}/${delays.length} → ${resp.status}: ${lastErr.message}`);
     if (resp.status !== 429 && resp.status !== 503) break;  // errores no transitorios: no reintentar
-    if (i < delays.length - 1) setSt(`Modelo saturado, reintentando (${i+2}/${delays.length})...`, 'loading');
+    if (i < delays.length - 1) setSt(`Servicio saturado, reintentando (${i+2}/${delays.length})...`, 'loading');
   }
   throw lastErr;
 }
@@ -484,20 +480,7 @@ async function run(file) {
     parts.push({ text: buildPrompt() });
     setSt('Generando acta con IA... (puede tardar ~15 segundos)', 'loading');
 
-    let data, usedModel;
-    for (let i = 0; i < GEMINI_MODELS.length; i++) {
-      const model = GEMINI_MODELS[i];
-      try {
-        data = await callGemini(model, parts);
-        usedModel = model;
-        break;
-      } catch (e) {
-        console.error(`[Gemini ${model}] falló:`, e);
-        const isTransient = e.status === 429 || e.status === 503;
-        if (!isTransient || i === GEMINI_MODELS.length - 1) throw e;
-        setSt(`Modelo primario saturado, cambiando a fallback (${GEMINI_MODELS[i+1]})...`, 'loading');
-      }
-    }
+    const data = await callAI(parts);
 
     const candidate = data.candidates?.[0];
     const finish = candidate?.finishReason;
@@ -524,8 +507,7 @@ async function run(file) {
 
     fillActa(d);
     showActa();
-    const modelNote = usedModel !== GEMINI_MODELS[0] ? ` (fallback: ${usedModel})` : '';
-    setSt('✓ Acta generada' + modelNote + '. Haz clic en cualquier celda para editarla.', 'done');
+    setSt('✓ Acta generada. Haz clic en cualquier celda para editarla.', 'done');
     setTimeout(() => setSt('', ''), 6000);
   } catch (e) {
     console.error('[run] error final:', e);

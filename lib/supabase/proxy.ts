@@ -45,8 +45,12 @@ export async function updateSession(request: NextRequest) {
     path === "/alzak-logo.png" ||
     path === "/favicon.ico";
 
-  // Not authenticated → redirect to login (except public routes)
+  // Not authenticated → las rutas /api responden 401 JSON (no redirect HTML,
+  // que rompería el fetch del cliente); el resto va al login.
   if (!claims && !isPublicRoute) {
+    if (path.startsWith("/api/")) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

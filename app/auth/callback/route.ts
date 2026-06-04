@@ -6,7 +6,9 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   let next = searchParams.get("next") ?? "/actas";
-  if (!next.startsWith("/")) next = "/actas";
+  // Solo rutas internas: debe empezar con "/" pero no con "//" (que sería
+  // un redirect protocol-relative a otro host).
+  if (!next.startsWith("/") || next.startsWith("//")) next = "/actas";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/auth/error?reason=missing_code`);

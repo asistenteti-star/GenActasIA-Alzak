@@ -11,11 +11,15 @@ export default function ProviderForm({
   geminiModel: initialGemini,
   claudeModel: initialClaude,
   updatedAt,
+  claudeKeyInDb,
+  claudeKeyInEnv,
 }: {
   provider: "gemini" | "claude";
   geminiModel: string;
   claudeModel: string;
   updatedAt: string;
+  claudeKeyInDb: boolean;
+  claudeKeyInEnv: boolean;
 }) {
   const router = useRouter();
   const [provider, setProvider] = useState(initialProvider);
@@ -23,6 +27,42 @@ export default function ProviderForm({
   const [claudeModel, setClaudeModel] = useState(initialClaude);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  const [claudeKey, setClaudeKey] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
+  const [keyMsg, setKeyMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  async function postConfig(payload: Record<string, string>) {
+    const r = await fetch("/api/admin/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error ?? "Error guardando");
+    return data;
+  }
+
+  async function saveKey(clear: boolean) {
+    setSavingKey(true);
+    setKeyMsg(null);
+    try {
+      await postConfig({ claude_api_key: clear ? "" : claudeKey });
+      setClaudeKey("");
+      setKeyMsg({ kind: "ok", text: clear ? "API key eliminada." : "API key guardada." });
+      router.refresh();
+    } catch (e) {
+      setKeyMsg({ kind: "err", text: e instanceof Error ? e.message : "Error" });
+    } finally {
+      setSavingKey(false);
+    }
+  }
+
+  const keyStatus = claudeKeyInDb
+    ? { text: "Configurada (guardada en la app)", color: "#0a0" }
+    : claudeKeyInEnv
+      ? { text: "Usando variable de entorno ANTHROPIC_API_KEY", color: "#0a0" }
+      : { text: "No configurada — Claude hará fallback a Gemini", color: "#d93025" };
 
   const dirty =
     provider !== initialProvider ||
@@ -107,6 +147,71 @@ export default function ProviderForm({
             <option key={m} value={m}>{m}</option>
           ))}
         </select>
+      </div>
+
+      <div style={{ borderTop: "1px solid #eee", paddingTop: "18px" }}>
+        <label style={{ fontSize: "11px", textTransform: "uppercase", color: "#666", fontWeight: 600 }}>
+          API key de Claude (Anthropic)
+        </label>
+        <p style={{ fontSize: "12px", margin: "4px 0 8px", color: keyStatus.color }}>
+          Estado: {keyStatus.text}
+        </p>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <input
+            type="password"
+            value={claudeKey}
+            onChange={(e) => setClaudeKey(e.target.value)}
+            placeholder="sk-ant-..."
+            autoComplete="off"
+            style={{ ...selectStyle, flex: 1, minWidth: "220px", marginTop: 0 }}
+          />
+          <button
+            type="button"
+            onClick={() => saveKey(false)}
+            disabled={savingKey || claudeKey.trim() === ""}
+            style={{
+              padding: "10px 18px",
+              background: !savingKey && claudeKey.trim() !== "" ? "#00A651" : "#aaa",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: 700,
+              cursor: !savingKey && claudeKey.trim() !== "" ? "pointer" : "not-allowed",
+              fontSize: "13px",
+            }}
+          >
+            {savingKey ? "Guardando…" : "Guardar key"}
+          </button>
+          {claudeKeyInDb && (
+            <button
+              type="button"
+              onClick={() => saveKey(true)}
+              disabled={savingKey}
+              style={{
+                padding: "10px 18px",
+                background: "#fff",
+                color: "#d93025",
+                border: "1.5px solid #d93025",
+                borderRadius: "8px",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: "13px",
+              }}
+            >
+              Borrar
+            </button>
+          )}
+        </div>
+        {keyMsg && (
+          <p style={{ fontSize: "13px", marginTop: "8px", color: keyMsg.kind === "ok" ? "#0a0" : "#d93025" }}>
+            {keyMsg.text}
+          </p>
+        )}
+        <p style={{ fontSize: "11px", color: "#999", marginTop: "8px" }}>
+          La key se guarda del lado servidor (acceso solo-admin) y no se muestra. Para que la generación la use
+          desde aquí se requiere <code>SUPABASE_SERVICE_ROLE_KEY</code>; si no, se usa la env var{" "}
+          <code>ANTHROPIC_API_KEY</code>.
+        </p>
       </div>
 
       <div style={{ display: "flex", gap: "12px", alignItems: "center", marginTop: "8px" }}>
