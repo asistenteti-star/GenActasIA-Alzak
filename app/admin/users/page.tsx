@@ -1,5 +1,8 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type UserRow = {
   id: string;
@@ -32,87 +35,60 @@ async function UsersContent() {
 
   if (profiles.length === 0) {
     return (
-      <div style={{ background: "#fff", borderRadius: "10px", padding: "20px" }}>
-        <p style={{ color: "#666" }}>
-          No hay perfiles registrados. Si el primer login fue antes de aplicar la migration 0001,
-          aplicala desde el SQL Editor de Supabase y volvé a entrar.
-        </p>
-      </div>
+      <Card className="p-5 text-sm text-slate-600">
+        No hay perfiles registrados aún.
+      </Card>
     );
   }
 
-  const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleString("es-CO") : "—");
+  const fmt = (d: string | null) => (d ? new Date(d).toLocaleString("es-CO") : "—");
 
   return (
-    <div style={{ background: "#fff", borderRadius: "10px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-        <thead style={{ background: "#fafafa" }}>
-          <tr>
-            <Th>Email</Th>
-            <Th>Nombre</Th>
-            <Th>Rol</Th>
-            <Th>Actas</Th>
-            <Th>Errores</Th>
-            <Th>Último login</Th>
-            <Th>Creado</Th>
-          </tr>
-        </thead>
-        <tbody>
+    <Card className="gap-0 overflow-hidden p-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Email</TableHead>
+            <TableHead>Nombre</TableHead>
+            <TableHead>Rol</TableHead>
+            <TableHead className="text-right">Actas</TableHead>
+            <TableHead className="text-right">Errores</TableHead>
+            <TableHead>Último login</TableHead>
+            <TableHead>Creado</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {profiles.map((p) => {
             const c = counts.get(p.id) ?? { total: 0, errors: 0 };
             return (
-              <tr key={p.id}>
-                <Td><strong>{p.email}</strong></Td>
-                <Td>{p.full_name ?? "—"}</Td>
-                <Td>
-                  <span
-                    style={{
-                      background: p.role === "admin" ? "#00A651" : "#e5e5e5",
-                      color: p.role === "admin" ? "#fff" : "#444",
-                      padding: "2px 8px",
-                      borderRadius: "10px",
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                    }}
-                  >
+              <TableRow key={p.id}>
+                <TableCell className="font-medium text-slate-900">{p.email}</TableCell>
+                <TableCell>{p.full_name ?? "—"}</TableCell>
+                <TableCell>
+                  <Badge variant={p.role === "admin" ? "default" : "secondary"} className="uppercase">
                     {p.role}
-                  </span>
-                </Td>
-                <Td>{c.total}</Td>
-                <Td style={{ color: c.errors > 0 ? "#d93025" : "#666" }}>{c.errors}</Td>
-                <Td>{fmtDate(p.last_sign_in_at)}</Td>
-                <Td>{fmtDate(p.created_at)}</Td>
-              </tr>
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{c.total}</TableCell>
+                <TableCell className={`text-right tabular-nums ${c.errors > 0 ? "text-red-600" : "text-slate-500"}`}>
+                  {c.errors}
+                </TableCell>
+                <TableCell className="text-slate-500">{fmt(p.last_sign_in_at)}</TableCell>
+                <TableCell className="text-slate-500">{fmt(p.created_at)}</TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th style={{ textAlign: "left", padding: "12px", fontSize: "11px", color: "#666", textTransform: "uppercase", fontWeight: 600, borderBottom: "1px solid #eee" }}>
-      {children}
-    </th>
-  );
-}
-
-function Td({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <td style={{ padding: "12px", borderBottom: "1px solid #f5f5f5", ...style }}>
-      {children}
-    </td>
+        </TableBody>
+      </Table>
+    </Card>
   );
 }
 
 export default function UsersPage() {
   return (
     <>
-      <h1 style={{ fontSize: "20px", margin: "0 0 20px" }}>Usuarios</h1>
-      <Suspense fallback={<p style={{ color: "#666" }}>Cargando…</p>}>
+      <h1 className="mb-6 text-xl font-bold tracking-tight text-slate-900">Usuarios</h1>
+      <Suspense fallback={<p className="text-sm text-slate-500">Cargando…</p>}>
         <UsersContent />
       </Suspense>
     </>

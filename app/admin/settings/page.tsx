@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { Card } from "@/components/ui/card";
 import ProviderForm from "./provider-form";
 
 async function CurrentConfig() {
@@ -32,15 +33,15 @@ async function CurrentConfig() {
 export default function SettingsPage() {
   return (
     <>
-      <h1 style={{ fontSize: "20px", margin: "0 0 20px" }}>Settings — Provider de IA</h1>
-      <div style={{ background: "#fff", borderRadius: "10px", padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", maxWidth: "560px" }}>
-        <Suspense fallback={<p style={{ color: "#666" }}>Cargando…</p>}>
+      <h1 className="mb-6 text-xl font-bold tracking-tight text-slate-900">Settings — Proveedor de IA</h1>
+      <Card className="max-w-xl p-6">
+        <Suspense fallback={<p className="text-sm text-slate-500">Cargando…</p>}>
           <CurrentConfig />
         </Suspense>
-      </div>
-      <p style={{ fontSize: "12px", color: "#666", marginTop: "16px", maxWidth: "560px" }}>
-        ⚠️ Claude no soporta audio nativo. Si seleccionás Claude y se sube un archivo de audio,
-        el backend hará fallback automático a Gemini para esa solicitud (queda registrado en logs).
+      </Card>
+      <p className="mt-4 max-w-xl text-xs text-slate-500">
+        ⚠️ Claude no soporta audio nativo. Si seleccionás Claude y se sube un archivo de audio, el
+        backend hará fallback automático a Gemini para esa solicitud (queda registrado en logs).
         Gemini es el proveedor por defecto.
       </p>
     </>

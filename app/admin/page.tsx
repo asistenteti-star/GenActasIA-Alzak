@@ -1,13 +1,15 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { AlertTriangle, ArrowRight, Cpu, FileText, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { Card } from "@/components/ui/card";
 
 async function Stats() {
   const supabase = await createClient();
-  const now = new Date();
-  const d24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-  const d7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const d30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const now = Date.now();
+  const d24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+  const d7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const d30d = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const [config, totalEvents, last24h, last7d, last30d, errors24h, totalUsers] =
     await Promise.all([
@@ -33,76 +35,85 @@ async function Stats() {
   const t24 = sumTokens(last24h.data);
   const t7 = sumTokens(last7d.data);
   const t30 = sumTokens(last30d.data);
+  const provider = config.data?.provider ?? "—";
+  const model = provider === "claude" ? config.data?.claude_model : config.data?.gemini_model;
+  const errs = errors24h.count ?? 0;
 
   return (
-    <>
-      <Card title="Provider activo">
-        <p style={{ fontSize: "24px", fontWeight: 700, margin: 0, textTransform: "uppercase", color: "#00A651" }}>
-          {config.data?.provider ?? "—"}
-        </p>
-        <p style={{ fontSize: "12px", color: "#666", margin: "4px 0 0" }}>
-          {config.data?.provider === "claude" ? config.data.claude_model : config.data?.gemini_model}
-        </p>
-        <Link href="/admin/settings" style={{ fontSize: "12px", color: "#00A651", marginTop: "8px", display: "inline-block" }}>
-          Cambiar →
-        </Link>
-      </Card>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatCard icon={Cpu} label="Provider activo" href="/admin/settings" cta="Cambiar">
+        <p className="text-2xl font-bold uppercase text-slate-900">{provider}</p>
+        <p className="mt-1 text-xs text-slate-500">{model ?? "—"}</p>
+      </StatCard>
 
-      <Card title="Total actas procesadas">
-        <p style={{ fontSize: "32px", fontWeight: 700, margin: 0 }}>{totalEvents.count ?? 0}</p>
-        <p style={{ fontSize: "11px", color: "#666", margin: "4px 0 0" }}>desde el inicio</p>
-      </Card>
+      <StatCard icon={FileText} label="Actas procesadas">
+        <p className="text-3xl font-bold text-slate-900">{totalEvents.count ?? 0}</p>
+        <p className="mt-1 text-xs text-slate-500">desde el inicio</p>
+      </StatCard>
 
-      <Card title="Usuarios registrados">
-        <p style={{ fontSize: "32px", fontWeight: 700, margin: 0 }}>{totalUsers.count ?? 0}</p>
-        <Link href="/admin/users" style={{ fontSize: "12px", color: "#00A651", marginTop: "8px", display: "inline-block" }}>
-          Ver detalle →
-        </Link>
-      </Card>
+      <StatCard icon={Users} label="Usuarios" href="/admin/users" cta="Ver detalle">
+        <p className="text-3xl font-bold text-slate-900">{totalUsers.count ?? 0}</p>
+      </StatCard>
 
-      <Card title="Errores últimas 24h">
-        <p style={{ fontSize: "32px", fontWeight: 700, margin: 0, color: (errors24h.count ?? 0) > 0 ? "#d93025" : "#0a0" }}>
-          {errors24h.count ?? 0}
-        </p>
-        <Link href="/admin/logs?status=error" style={{ fontSize: "12px", color: "#00A651", marginTop: "8px", display: "inline-block" }}>
-          Ver logs →
-        </Link>
-      </Card>
+      <StatCard icon={AlertTriangle} label="Errores 24h" href="/admin/logs?status=error" cta="Ver logs">
+        <p className={`text-3xl font-bold ${errs > 0 ? "text-red-600" : "text-emerald-600"}`}>{errs}</p>
+      </StatCard>
 
       <UsageWindow title="Últimas 24 horas" events={last24h.count ?? 0} {...t24} />
       <UsageWindow title="Últimos 7 días" events={last7d.count ?? 0} {...t7} />
       <UsageWindow title="Últimos 30 días" events={last30d.count ?? 0} {...t30} />
-    </>
+    </div>
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function StatCard({
+  icon: Icon,
+  label,
+  href,
+  cta,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  href?: string;
+  cta?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div style={{ background: "#fff", borderRadius: "10px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-      <p style={{ fontSize: "11px", color: "#666", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 8px" }}>{title}</p>
+    <Card className="gap-0 p-5">
+      <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+        <Icon className="h-4 w-4" />
+        {label}
+      </div>
       {children}
-    </div>
+      {href && cta && (
+        <Link href={href} className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-slate-700 hover:text-slate-900">
+          {cta} <ArrowRight className="h-3 w-3" />
+        </Link>
+      )}
+    </Card>
   );
 }
 
 function UsageWindow({ title, events, inT, outT, cost }: { title: string; events: number; inT: number; outT: number; cost: number }) {
   return (
-    <Card title={title}>
-      <div style={{ display: "grid", gap: "6px", fontSize: "13px" }}>
+    <Card className="gap-0 p-5">
+      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">{title}</p>
+      <dl className="grid gap-1.5 text-sm">
         <Row k="Llamadas" v={events.toString()} />
         <Row k="Tokens in" v={inT.toLocaleString()} />
         <Row k="Tokens out" v={outT.toLocaleString()} />
         <Row k="Costo aprox" v={`$${cost.toFixed(4)}`} highlight />
-      </div>
+      </dl>
     </Card>
   );
 }
 
 function Row({ k, v, highlight }: { k: string; v: string; highlight?: boolean }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span style={{ color: "#666" }}>{k}</span>
-      <span style={{ fontWeight: highlight ? 700 : 500, color: highlight ? "#00A651" : "#2D2D2D" }}>{v}</span>
+    <div className="flex items-center justify-between">
+      <dt className="text-slate-500">{k}</dt>
+      <dd className={`tabular-nums ${highlight ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}>{v}</dd>
     </div>
   );
 }
@@ -110,12 +121,10 @@ function Row({ k, v, highlight }: { k: string; v: string; highlight?: boolean })
 export default function AdminDashboard() {
   return (
     <>
-      <h1 style={{ fontSize: "20px", margin: "0 0 20px" }}>Dashboard</h1>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
-        <Suspense fallback={<p style={{ color: "#666" }}>Cargando estadísticas…</p>}>
-          <Stats />
-        </Suspense>
-      </div>
+      <h1 className="mb-6 text-xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+      <Suspense fallback={<p className="text-sm text-slate-500">Cargando estadísticas…</p>}>
+        <Stats />
+      </Suspense>
     </>
   );
 }

@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Event = {
   user_email: string | null;
@@ -23,122 +25,90 @@ async function MetricsContent() {
 
   const events: Event[] = rows ?? [];
 
-  // Por día (últimos 30 días)
-  const byDay = new Map<string, { calls: number; inT: number; outT: number; cost: number }>();
-  // Por usuario
-  const byUser = new Map<string, { calls: number; inT: number; outT: number; cost: number; errors: number }>();
-  // Por provider
-  const byProvider = new Map<string, { calls: number; inT: number; outT: number; cost: number }>();
+  const byDay = new Map<string, Agg>();
+  const byUser = new Map<string, Agg>();
+  const byProvider = new Map<string, Agg>();
 
   for (const e of events) {
     const day = e.created_at.slice(0, 10);
-    const inc = (m: Map<string, { calls: number; inT: number; outT: number; cost: number; errors?: number }>, k: string) => {
+    const inc = (m: Map<string, Agg>, k: string) => {
       const cur = m.get(k) ?? { calls: 0, inT: 0, outT: 0, cost: 0, errors: 0 };
       cur.calls += 1;
       cur.inT += e.tokens_in ?? 0;
       cur.outT += e.tokens_out ?? 0;
       cur.cost += Number(e.estimated_cost_usd ?? 0);
-      if (e.status === "error") cur.errors = (cur.errors ?? 0) + 1;
+      if (e.status === "error") cur.errors += 1;
       m.set(k, cur);
     };
     inc(byDay, day);
-    inc(byUser, e.user_email ?? "(unknown)");
+    inc(byUser, e.user_email ?? "(desconocido)");
     inc(byProvider, e.provider);
   }
 
-  const days = Array.from(byDay.entries()).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 30);
-  const users = Array.from(byUser.entries()).sort((a, b) => b[1].calls - a[1].calls).slice(0, 20);
-  const providers = Array.from(byProvider.entries());
+  const days = [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 30);
+  const users = [...byUser.entries()].sort((a, b) => b[1].calls - a[1].calls).slice(0, 20);
+  const providers = [...byProvider.entries()];
 
   return (
-    <div style={{ display: "grid", gap: "24px" }}>
-      <Section title="Por provider (últimos 30 días)">
-        <Table
-          headers={["Provider", "Llamadas", "Tokens in", "Tokens out", "Costo USD"]}
-          rows={providers.map(([p, v]) => [
-            p.toUpperCase(),
-            v.calls.toString(),
-            v.inT.toLocaleString(),
-            v.outT.toLocaleString(),
-            `$${v.cost.toFixed(4)}`,
-          ])}
-        />
-      </Section>
-
-      <Section title="Por usuario (top 20, últimos 30 días)">
-        <Table
-          headers={["Usuario", "Llamadas", "Errores", "Tokens in", "Tokens out", "Costo USD"]}
-          rows={users.map(([email, v]) => [
-            email,
-            v.calls.toString(),
-            (v.errors ?? 0).toString(),
-            v.inT.toLocaleString(),
-            v.outT.toLocaleString(),
-            `$${v.cost.toFixed(4)}`,
-          ])}
-        />
-      </Section>
-
-      <Section title="Por día (últimos 30 días)">
-        <Table
-          headers={["Día", "Llamadas", "Tokens in", "Tokens out", "Costo USD"]}
-          rows={days.map(([d, v]) => [
-            d,
-            v.calls.toString(),
-            v.inT.toLocaleString(),
-            v.outT.toLocaleString(),
-            `$${v.cost.toFixed(4)}`,
-          ])}
-        />
-      </Section>
+    <div className="grid gap-6">
+      <MetricTable
+        title="Por proveedor (últimos 30 días)"
+        headers={["Proveedor", "Llamadas", "Tokens in", "Tokens out", "Costo USD"]}
+        rows={providers.map(([p, v]) => [p.toUpperCase(), v.calls.toLocaleString(), v.inT.toLocaleString(), v.outT.toLocaleString(), `$${v.cost.toFixed(4)}`])}
+      />
+      <MetricTable
+        title="Por usuario (top 20, últimos 30 días)"
+        headers={["Usuario", "Llamadas", "Errores", "Tokens in", "Tokens out", "Costo USD"]}
+        rows={users.map(([email, v]) => [email, v.calls.toLocaleString(), v.errors.toString(), v.inT.toLocaleString(), v.outT.toLocaleString(), `$${v.cost.toFixed(4)}`])}
+      />
+      <MetricTable
+        title="Por día (últimos 30 días)"
+        headers={["Día", "Llamadas", "Tokens in", "Tokens out", "Costo USD"]}
+        rows={days.map(([d, v]) => [d, v.calls.toLocaleString(), v.inT.toLocaleString(), v.outT.toLocaleString(), `$${v.cost.toFixed(4)}`])}
+      />
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: "#fff", borderRadius: "10px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-      <h2 style={{ fontSize: "14px", margin: "0 0 14px", color: "#444", textTransform: "uppercase", letterSpacing: "0.5px" }}>{title}</h2>
-      {children}
-    </div>
-  );
-}
+type Agg = { calls: number; inT: number; outT: number; cost: number; errors: number };
 
-function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
-  if (rows.length === 0) {
-    return <p style={{ color: "#666", fontSize: "13px", margin: 0 }}>Sin datos.</p>;
-  }
+function MetricTable({ title, headers, rows }: { title: string; headers: string[]; rows: string[][] }) {
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-      <thead>
-        <tr>
-          {headers.map((h) => (
-            <th key={h} style={{ textAlign: "left", padding: "8px", fontSize: "11px", color: "#666", textTransform: "uppercase", borderBottom: "1px solid #eee", fontWeight: 600 }}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i}>
-            {r.map((c, j) => (
-              <td key={j} style={{ padding: "8px", borderBottom: "1px solid #f5f5f5", fontVariantNumeric: j > 0 ? "tabular-nums" : "normal" }}>
-                {c}
-              </td>
+    <Card className="gap-0 overflow-hidden p-0">
+      <div className="border-b border-slate-100 px-5 py-3.5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h2>
+      </div>
+      {rows.length === 0 ? (
+        <p className="px-5 py-4 text-sm text-slate-500">Sin datos.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {headers.map((h, i) => (
+                <TableHead key={h} className={i > 0 ? "text-right" : ""}>{h}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r, i) => (
+              <TableRow key={i}>
+                {r.map((c, j) => (
+                  <TableCell key={j} className={j > 0 ? "text-right tabular-nums" : "font-medium"}>{c}</TableCell>
+                ))}
+              </TableRow>
             ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+          </TableBody>
+        </Table>
+      )}
+    </Card>
   );
 }
 
 export default function MetricsPage() {
   return (
     <>
-      <h1 style={{ fontSize: "20px", margin: "0 0 20px" }}>Métricas de consumo</h1>
-      <Suspense fallback={<p style={{ color: "#666" }}>Cargando…</p>}>
+      <h1 className="mb-6 text-xl font-bold tracking-tight text-slate-900">Métricas de consumo</h1>
+      <Suspense fallback={<p className="text-sm text-slate-500">Cargando…</p>}>
         <MetricsContent />
       </Suspense>
     </>
