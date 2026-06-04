@@ -53,6 +53,21 @@ nav{background:var(--white);border-bottom:3px solid var(--green);height:56px;dis
 .gen-btn-wrap .btn{min-width:260px;justify-content:center;font-size:13px;padding:12px 22px;box-shadow:0 2px 8px rgba(0,166,81,.25)}
 .gen-btn-wrap .btn:hover:not(:disabled){box-shadow:0 4px 14px rgba(0,166,81,.35);transform:translateY(-1px)}
 
+/* ENTITY PICKER */
+.entity-pick{margin-bottom:20px}
+.entity-pick .ep-title{font-size:14px;font-weight:700;color:var(--dark);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.entity-pick .ep-title::before{content:"";width:4px;height:18px;background:var(--green);border-radius:2px;display:inline-block}
+.entity-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.entity-opts{grid-template-columns:1fr}}
+.entity-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:16px 14px;border:2px solid var(--g300);border-radius:10px;background:#fff;cursor:pointer;transition:all .15s;text-align:center}
+.entity-btn:hover{border-color:var(--green);background:var(--green-xl);transform:translateY(-1px)}
+.entity-btn.sel{border-color:var(--green);background:var(--green-xl);box-shadow:0 0 0 3px var(--green-xl)}
+.entity-btn img{height:48px;object-fit:contain;margin-bottom:3px}
+.entity-btn .en-name{font-size:12px;font-weight:700;color:var(--dark);line-height:1.3}
+.entity-btn .en-nit{font-size:10px;color:var(--g600)}
+.entity-btn .en-check{font-size:10px;font-weight:700;color:var(--green-d);opacity:0;transition:opacity .15s}
+.entity-btn.sel .en-check{opacity:1}
+
 /* STATUS */
 .status{display:none;align-items:center;gap:8px;padding:10px 14px;border-radius:6px;font-size:12px;font-weight:500;margin-bottom:12px}
 .status.show{display:flex}
@@ -143,6 +158,26 @@ nav{background:var(--white);border-bottom:3px solid var(--green);height:56px;dis
 
   <!-- ── UPLOAD PANEL ── -->
   <div class="upload-panel">
+
+    <!-- PASO 1: razón social -->
+    <div class="entity-pick">
+      <div class="ep-title">¿Para qué razón social es el acta?</div>
+      <div class="entity-opts">
+        <button type="button" class="entity-btn" id="ent_FOUNDATION" onclick="pickEntity('FOUNDATION')">
+          <img src="/logos/ALZAK_foundation.png" alt="ALZAK Foundation">
+          <span class="en-name">ALZAK FOUNDATION</span>
+          <span class="en-nit">NIT 900.919.573-9</span>
+          <span class="en-check">✓ Seleccionada</span>
+        </button>
+        <button type="button" class="entity-btn" id="ent_CONSULTING" onclick="pickEntity('CONSULTING')">
+          <img src="/logos/alzakgroup.png" alt="ALZAK Consulting &amp; Research">
+          <span class="en-name">ALZAK CONSULTING &amp; RESEARCH</span>
+          <span class="en-nit">NIT 900.898.741-8</span>
+          <span class="en-check">✓ Seleccionada</span>
+        </button>
+      </div>
+    </div>
+
     <div class="upload-head">
       <h2>Generar acta desde notas de reunión</h2>
       <span class="badge">FND-FR-001</span>
@@ -189,7 +224,7 @@ nav{background:var(--white);border-bottom:3px solid var(--green);height:56px;dis
       <!-- ENCABEZADO -->
       <tr>
         <td rowspan="3" class="logo-td">
-          <img src="/alzak-logo.png" alt="ALZAK Foundation" style="height:48px;object-fit:contain;display:block;margin:0 auto">
+          <img id="actaLogo" src="/logos/ALZAK_foundation.png" alt="ALZAK Foundation" style="height:48px;object-fit:contain;display:block;margin:0 auto">
         </td>
         <td rowspan="3" colspan="3" class="fmt-td">FORMATO ACTA DE REUNIÓN</td>
         <td class="lb">CÓDIGO</td><td colspan="2" class="hd">FND-FR-001</td>
@@ -251,8 +286,60 @@ nav{background:var(--white);border-bottom:3px solid var(--green);height:56px;dis
 
 <script>
 // ── CONSTANTES ──────────────────────────────────────────────
-const CO = 'ALZAK Foundation';
 const SR = /\bSAC\b/g;
+
+// ── RAZONES SOCIALES ────────────────────────────────────────
+// Cada entidad define su logo, NIT, color y el tamaño del logo para el Word
+// (ancho/alto en px manteniendo la proporción original del PNG).
+const ENTIDADES = {
+  FOUNDATION: {
+    key: 'FOUNDATION',
+    razonSocial: 'ALZAK Foundation',
+    razonSocialDoc: 'ALZAK FOUNDATION',
+    nit: '900.919.573-9',
+    logo: '/logos/ALZAK_foundation.png',
+    codigo: 'FND-FR-001',
+    color: { main: '#00A651', dark: '#007A3D', xl: '#E6F7EE', hex: '00A651' },
+    logoDocx: { width: 132, height: 50 }   // PNG 2131x810
+  },
+  CONSULTING: {
+    key: 'CONSULTING',
+    razonSocial: 'ALZAK Consulting & Research',
+    razonSocialDoc: 'ALZAK CONSULTING & RESEARCH',
+    nit: '900.898.741-8',
+    logo: '/logos/alzakgroup.png',
+    codigo: 'FND-FR-001',
+    color: { main: '#1E63C8', dark: '#154A99', xl: '#E7F0FB', hex: '1E63C8' },
+    logoDocx: { width: 92, height: 59 }     // PNG 1677x1069
+  }
+};
+
+// Entidad activa (null hasta que el usuario elija) y razón social para los
+// reemplazos de texto.
+let ENT = null;
+let CO  = 'ALZAK Foundation';
+
+function pickEntity(key) {
+  ENT = ENTIDADES[key];
+  CO  = ENT.razonSocial;
+  // Resalta el botón elegido
+  document.querySelectorAll('.entity-btn').forEach(b => b.classList.remove('sel'));
+  document.getElementById('ent_' + key)?.classList.add('sel');
+  // Aplica el tema de color (sobrescribe las variables verdes)
+  const root = document.documentElement;
+  root.style.setProperty('--green',    ENT.color.main);
+  root.style.setProperty('--green-d',  ENT.color.dark);
+  root.style.setProperty('--green-xl', ENT.color.xl);
+  // Cambia el logo del encabezado del acta
+  const al = document.getElementById('actaLogo');
+  if (al) { al.src = ENT.logo; al.alt = ENT.razonSocialDoc; }
+  updateGenBtn();
+}
+
+function updateGenBtn() {
+  const btn = document.getElementById('genBtn');
+  if (btn) btn.disabled = !(pendingFile && ENT);
+}
 
 // La API key vive en Vercel env vars (process.env.GEMINI_API_KEY).
 // El frontend habla con /api/gemini, que proxea a Google.
@@ -348,11 +435,12 @@ function onPick(file) {
   fn.textContent = file.name;
   fn.style.display = 'block';
   document.getElementById('uz').classList.add('has-file');
-  document.getElementById('genBtn').disabled = false;
+  updateGenBtn();
 }
 
 // ── GENERATE ────────────────────────────────────────────────
 async function generate() {
+  if (!ENT) { setSt('Primero elige la razón social del acta.', 'error'); return; }
   if (!pendingFile) return;
   await run(pendingFile);
 }
@@ -360,7 +448,7 @@ async function generate() {
 async function callGemini(model, parts) {
   const url = `/api/gemini?model=${encodeURIComponent(model)}`;
   const payload = {
-    system_instruction: { parts: [{ text: SYS }] },
+    system_instruction: { parts: [{ text: buildSYS() }] },
     contents: [{ role: 'user', parts }],
     generationConfig: { temperature: 0.1, maxOutputTokens: 32768, responseMimeType: 'application/json' }
   };
@@ -391,7 +479,7 @@ async function run(file) {
   document.getElementById('genBtn').disabled = true;
   try {
     const parts = await buildContent(file);
-    parts.push({ text: PROMPT });
+    parts.push({ text: buildPrompt() });
     setSt('Generando acta con IA... (puede tardar ~15 segundos)', 'loading');
 
     let data, usedModel;
@@ -493,18 +581,21 @@ async function toB64(file) {
 }
 
 // ── PROMPTS ─────────────────────────────────────────────────
-const SYS = `Eres un extractor de información para actas de reunión de ALZAK Foundation.
+function buildSYS() {
+  const org = CO;
+  return `Eres un extractor de información para actas de reunión de ${org}.
 
 REGLAS ABSOLUTAS — NO NEGOCIABLES:
 1. EXTRAE ÚNICAMENTE lo que está escrito textualmente en el documento. NUNCA inventes, asumas, completes ni agregues información que no esté explícitamente en las notas.
 2. Si un dato no aparece en el documento, usa exactamente "N/D" — nunca adivines ni infergas.
 3. Copia el texto TAL CUAL aparece en las notas, sin parafrasear, resumir ni mejorar la redacción.
 4. NUNCA agregues contexto externo, conocimiento propio ni información sobre Alzheimer, salud, fundaciones ni ningún otro tema.
-5. Reemplaza "SAC" o "Group S.A.S" por "ALZAK Foundation" solo si aparecen literalmente en el texto.
+5. Reemplaza "SAC" o "Group S.A.S" por "${org}" solo si aparecen literalmente en el texto.
 6. Responde SOLO con el JSON válido. Cero texto adicional, cero markdown, cero explicaciones.
 7. El nombre de la organización es SIEMPRE "ALZAK" (A-L-Z-A-K). Si en las notas aparece escrito de forma diferente (ALSAC, ALSAQ, ALZAC, ALZAQ, ALSAK u otra variación), corrígelo siempre a "ALZAK". Nunca uses una variación incorrecta.`;
+}
 
-const PROMPT = `Tu única tarea es leer el documento de notas adjunto y trasladar su contenido al siguiente formato JSON. Devuelve SOLO el JSON, sin texto adicional.
+function buildPrompt() { return `Tu única tarea es leer el documento de notas adjunto y trasladar su contenido al siguiente formato JSON. Devuelve SOLO el JSON, sin texto adicional.
 
 INSTRUCCIONES CRÍTICAS:
 - Copia el texto EXACTAMENTE como aparece en las notas. No reformules, no mejores, no resumas.
@@ -536,9 +627,9 @@ INSTRUCCIONES CRÍTICAS:
     ["compromiso exactamente como aparece en el documento", "responsable exactamente como aparece", "fecha exacta del documento o N/D"]
   ],
   "cambios": [
-    ["dd-mm-aaaa", "001", "Creación del documento", "ALZAK Foundation"]
+    ["dd-mm-aaaa", "001", "Creación del documento", "${CO}"]
   ]
-}`;
+}`; }
 
 // ── FILL ACTA ───────────────────────────────────────────────
 function cl(v) { return fixAlzak((v || '').replace(SR, CO)); }
@@ -558,7 +649,7 @@ function fillActa(d) {
   renderT('d',  d.desarrollo  || []);
   renderT('c',  d.compromisos || []);
   const today = new Date().toLocaleDateString('es-CO', { day:'2-digit', month:'2-digit', year:'numeric' }).replace(/\//g,'-');
-  renderT('cc', d.cambios && d.cambios.length ? d.cambios : [[today, '001', 'Creación del documento', 'ALZAK Foundation']]);
+  renderT('cc', d.cambios && d.cambios.length ? d.cambios : [[today, '001', 'Creación del documento', (ENT ? ENT.razonSocialDoc : CO)]]);
 }
 
 function showActa() {
@@ -739,14 +830,22 @@ async function exportWord() {
   if (btn) { btn.textContent = 'Generando...'; btn.disabled = true; }
 
   try {
+    const ent = ENT || ENTIDADES.FOUNDATION;
     const docxLib = await loadDocxLib();
 
     const { Document, Packer, Paragraph, Table, TableRow, TableCell,
             TextRun, ImageRun, WidthType, AlignmentType, BorderStyle,
             ShadingType, HeadingLevel, VerticalAlign } = docxLib;
 
+    // Logo real de la entidad (PNG) para incrustar en el encabezado.
+    let logoBytes = null;
+    try {
+      const lr = await fetch(ent.logo);
+      if (lr.ok) logoBytes = new Uint8Array(await lr.arrayBuffer());
+    } catch (e) { console.warn('No se pudo cargar el logo para el Word', e); }
+
     // ── helpers ──────────────────────────────────────────────
-    const GREEN  = '00A651';
+    const GREEN  = ent.color.hex;
     const WHITE  = 'FFFFFF';
     const DARK   = '2D2D2D';
     const LGRAY  = 'EFEFEF';
@@ -839,18 +938,19 @@ async function exportWord() {
     // Header rows
     const headerRows = [
       new TableRow({ children: [
-        // Logo cell (text-based since we can't easily embed img in docx via JS)
+        // Logo cell: imagen real del logo de la entidad (con fallback a texto)
         new TableCell({
           rowSpan: 3,
           verticalAlign: VerticalAlign.CENTER,
           borders: allBorders,
           children: [
-            new Paragraph({ alignment: AlignmentType.CENTER, children: [
-              new TextRun({ text: 'ALZAK', bold:true, color: GREEN, size:32, font:'Calibri' })
-            ]}),
-            new Paragraph({ alignment: AlignmentType.CENTER, children: [
-              new TextRun({ text: 'Foundation', color: GREEN, size:20, font:'Calibri' })
-            ]})
+            logoBytes
+              ? new Paragraph({ alignment: AlignmentType.CENTER, children: [
+                  new ImageRun({ data: logoBytes, transformation: ent.logoDocx })
+                ]})
+              : new Paragraph({ alignment: AlignmentType.CENTER, children: [
+                  new TextRun({ text: ent.razonSocialDoc, bold:true, color: GREEN, size:22, font:'Calibri' })
+                ]})
           ]
         }),
         new TableCell({
@@ -865,7 +965,7 @@ async function exportWord() {
         labelCell('CÓDIGO'),
         new TableCell({ columnSpan:2, borders: allBorders, shading:{ type: ShadingType.CLEAR, fill: HGRAY },
           children:[new Paragraph({ alignment: AlignmentType.CENTER, children:[
-            new TextRun({ text:'FND-FR-001', bold:true, size:20, font:'Calibri' })
+            new TextRun({ text: ent.codigo, bold:true, size:20, font:'Calibri' })
           ]})]
         })
       ]}),
@@ -999,7 +1099,7 @@ async function exportWord() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `Acta_${na || 'ALZAK_Foundation'}.docx`;
+    a.download = `Acta_${na || ent.razonSocialDoc.replace(/[^A-Za-z0-9]+/g, '_')}.docx`;
     a.click();
     URL.revokeObjectURL(url);
 
