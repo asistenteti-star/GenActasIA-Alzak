@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -9,10 +10,10 @@ type Variant = "foundation" | "consulting";
 
 const ENTIDADES: Record<
   Variant,
-  { name: string; nit: string; accent: string; soft: string }
+  { name: string; nit: string; accent: string; soft: string; logo: string }
 > = {
-  foundation: { name: "ALZAK FOUNDATION", nit: "NIT 900.919.573-9", accent: "#00A651", soft: "#E6F7EE" },
-  consulting: { name: "ALZAK CONSULTING & RESEARCH", nit: "NIT 900.898.741-8", accent: "#1E63C8", soft: "#E7F0FB" },
+  foundation: { name: "ALZAK FOUNDATION", nit: "NIT 900.919.573-9", accent: "#00A651", soft: "#E6F7EE", logo: "/logos/ALZAK_foundation.png" },
+  consulting: { name: "ALZAK CONSULTING & RESEARCH", nit: "NIT 900.898.741-8", accent: "#1E63C8", soft: "#E7F0FB", logo: "/logos/alzakgroup.png" },
 };
 
 /**
@@ -95,8 +96,17 @@ function ActaCard({ variant, position }: { variant: Variant; position: "front" |
 
       {/* Encabezado del acta */}
       <div className="flex items-center gap-2.5 border-b border-slate-100 pb-2.5">
-        <div className="h-7 w-7 shrink-0 rounded" style={{ background: e.soft }}>
-          <div className="m-1.5 h-4 w-4 rounded-sm" style={{ background: e.accent }} />
+        <div
+          className="flex h-9 w-12 shrink-0 items-center justify-center rounded px-1"
+          style={{ background: e.soft }}
+        >
+          <Image
+            src={e.logo}
+            alt={e.name}
+            width={120}
+            height={48}
+            className="h-6 w-auto object-contain"
+          />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[9px] font-bold text-slate-800 sm:text-[10px]">{e.name}</p>
