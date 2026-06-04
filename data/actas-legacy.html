@@ -456,6 +456,7 @@ function onDrop(e) {
 function onPick(file) {
   if (!file) return;
   pendingFile = file;
+  currentActaId = null;   // archivo nuevo = acta nueva (no actualizar la anterior)
   const fn = document.getElementById('fname');
   fn.textContent = file.name;
   fn.style.display = 'block';
@@ -530,7 +531,11 @@ async function run(file) {
 
     fillActa(d);
     showActa();
-    setSt('✓ Acta generada. Haz clic en cualquier celda para editarla.', 'done');
+    // Auto-guardado en el historial (no bloquea si falla).
+    let savedNote = '';
+    try { await persistActa(); savedNote = ' y guardada en el historial'; }
+    catch (e) { console.warn('Auto-guardado falló:', e); }
+    setSt('✓ Acta generada' + savedNote + '. Haz clic en cualquier celda para editarla.', 'done');
     setTimeout(() => setSt('', ''), 6000);
   } catch (e) {
     console.error('[run] error final:', e);
@@ -667,6 +672,7 @@ function showActa() {
 
 function resetActa() {
   if (!confirm('¿Descartar esta acta? Se borrarán todos los datos no exportados.')) return;
+  currentActaId = null;
   document.getElementById('acta').classList.remove('show');
   document.getElementById('navEnd').style.display = 'none';
   Object.keys(CFG).forEach(k => renderT(k, []));
@@ -801,15 +807,66 @@ function gt(key) {
     .filter(r => r.some(v => v));
 }
 
-// ── HISTORIAL (guardar / abrir) ─────────────────────────────
-// Nota: las firmas dibujadas no se guardan (se vuelven a firmar al reabrir);
-// se almacena el contenido estructurado del acta.
+// ── HISTORIAL (guardar / abrir / actualizar) ────────────────
+// id de la acta actualmente abierta/guardada (para actualizar en vez de duplicar).
+let currentActaId = null;
+
+function canvasHasInk(canvas) {
+  const d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] !== 0) return true;
+  return false;
+}
+
+// Asistentes + firmas (dataURL PNG por fila, alineadas por índice).
+function collectAsistentes() {
+  const rows = [], firmas = [];
+  Array.from(document.getElementById('tb_a').querySelectorAll('tr')).forEach(tr => {
+    const cells = Array.from(tr.querySelectorAll('[contenteditable]')).map(c => c.textContent.trim());
+    const canvas = tr.querySelector('canvas.sig-canvas');
+    const sig = canvas && canvasHasInk(canvas) ? canvas.toDataURL('image/png') : null;
+    if (cells.some(v => v) || sig) { rows.push(cells); firmas.push(sig); }
+  });
+  return { rows, firmas };
+}
+
 function collectActa() {
+  const asis = collectAsistentes();
   return {
     fecha_doc: gf('f_fd'), fecha: gf('f_fe'), hora_ini: gf('f_hi'), hora_fin: gf('f_hf'),
     nombre: gf('f_no'), objetivo: gf('f_ob'), lugar: gf('f_lu'), num_acta: gf('f_na'),
-    asistentes: gt('a'), orden: gt('o'), desarrollo: gt('d'), compromisos: gt('c'), cambios: gt('cc')
+    asistentes: asis.rows, firmas: asis.firmas,
+    orden: gt('o'), desarrollo: gt('d'), compromisos: gt('c'), cambios: gt('cc')
   };
+}
+
+// Dibuja las firmas guardadas sobre los canvas de cada asistente.
+function drawSignatures(firmas) {
+  if (!Array.isArray(firmas)) return;
+  const rows = document.getElementById('tb_a').querySelectorAll('tr');
+  firmas.forEach((sig, i) => {
+    if (!sig || !rows[i]) return;
+    const canvas = rows[i].querySelector('canvas.sig-canvas');
+    if (!canvas) return;
+    const img = new Image();
+    img.onload = () => canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    img.src = sig;
+  });
+}
+
+// Guarda (POST) o actualiza (PUT si ya tiene id) la acta. Devuelve el id.
+async function persistActa() {
+  const data = collectActa();
+  const payload = { entity: ENT.key, data, num_acta: data.num_acta, nombre: data.nombre, fecha: data.fecha };
+  const url = currentActaId ? '/api/actas/' + encodeURIComponent(currentActaId) : '/api/actas';
+  const r = await fetch(url, {
+    method: currentActaId ? 'PUT' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Error ' + r.status);
+  if (j.id) currentActaId = j.id;
+  return j;
 }
 
 async function saveActa() {
@@ -818,14 +875,7 @@ async function saveActa() {
   const orig = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
   try {
-    const data = collectActa();
-    const r = await fetch('/api/actas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity: ENT.key, data, num_acta: data.num_acta, nombre: data.nombre, fecha: data.fecha })
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || 'Error ' + r.status);
+    await persistActa();
     setSt('✓ Acta guardada en el historial.', 'done');
     setTimeout(() => setSt('', ''), 5000);
   } catch (e) {
@@ -846,7 +896,9 @@ async function maybeLoadActa() {
     const a = j.acta;
     if (a.entity && ENTIDADES[a.entity]) pickEntity(a.entity);
     fillActa(a.data || {});
+    drawSignatures(a.data && a.data.firmas);
     showActa();
+    currentActaId = a.id;   // futuras ediciones actualizan esta acta
     setSt('✓ Acta cargada. Puedes editarla, firmarla y exportarla.', 'done');
     setTimeout(() => setSt('', ''), 6000);
   } catch (e) {

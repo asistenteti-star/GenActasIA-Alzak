@@ -8,6 +8,7 @@ import { getCurrentProfile } from "@/lib/auth-server";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LogoutButton } from "@/components/logout-button";
+import { DeleteActaButton } from "@/components/historial/delete-acta-button";
 
 type Acta = {
   id: string;
@@ -81,12 +82,15 @@ async function HistorialContent() {
               <TableCell className="max-w-[280px] truncate">{a.nombre ?? "—"}</TableCell>
               {isAdmin && <TableCell className="text-slate-500">{a.user_email ?? "—"}</TableCell>}
               <TableCell className="text-right">
-                <Link
-                  href={`/actas?acta=${a.id}`}
-                  className="inline-flex rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  Abrir
-                </Link>
+                <div className="inline-flex items-center gap-1.5">
+                  <Link
+                    href={`/actas?acta=${a.id}`}
+                    className="inline-flex rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    Abrir
+                  </Link>
+                  <DeleteActaButton id={a.id} />
+                </div>
               </TableCell>
             </TableRow>
           ))}
