@@ -5,6 +5,7 @@ import type { ComponentType } from "react";
 import { CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TextRotator } from "./text-rotator";
+import { MockupActa } from "./mockup-acta";
 
 export function LoginHero({ className }: { className?: string }) {
   function handleMouseMove(e: React.MouseEvent<HTMLElement>) {
@@ -106,6 +107,9 @@ export function LoginHero({ className }: { className?: string }) {
         <p className="mx-auto mt-2 max-w-md text-center text-xs text-slate-500 sm:text-sm">
           Resumen Gemini · Plantilla institucional · Firma digital
         </p>
+
+        {/* Mockup animado del acta (alterna entre razones sociales) */}
+        <MockupActa />
 
         {/* Trust badges */}
         <div className="mt-7 flex flex-wrap items-center justify-center gap-2 lg:mt-9">

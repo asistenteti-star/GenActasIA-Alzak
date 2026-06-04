@@ -132,6 +132,20 @@ nav{background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1p
 .mbox input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(0,166,81,.15)}
 .mact{display:flex;gap:8px;justify-content:flex-end}
 
+/* RESPONSIVE (móvil) */
+@media(max-width:640px){
+  nav{height:auto;min-height:52px;flex-wrap:wrap;padding:8px 14px;gap:8px}
+  .logo-meta{display:none}
+  #userBadge{display:none!important}
+  .page{padding:18px 12px 64px}
+  .upload-panel{padding:20px 16px}
+  .gen-btn-wrap .btn{min-width:0;width:100%}
+  .acta-actions .hint{flex:1 0 100%;margin:0 0 4px}
+  /* La tabla del acta (7 columnas) hace scroll horizontal en vez de aplastarse */
+  .acta-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .at{min-width:680px}
+}
+
 @media print{
   nav,.upload-panel,.acta-actions,.status,.x,.add,.mbg,.sig-clr{display:none!important}
   body{background:#fff}.page{padding:0;max-width:100%}
