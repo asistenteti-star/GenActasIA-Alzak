@@ -141,7 +141,7 @@ nav{background:var(--white);border-bottom:3px solid var(--green);height:56px;dis
 <body>
 
 <nav>
-  <img src="/alzak-logo.png" alt="ALZAK Foundation" style="height:36px;object-fit:contain">
+  <img id="navLogo" src="/alzak-logo.png" alt="ALZAK Foundation" style="height:36px;object-fit:contain">
   <div class="logo-meta" style="border-left:1px solid #D0D0D0;padding-left:10px;margin-left:4px;font-size:9px;color:#666;line-height:1.5"><b style="display:block;font-size:10px;color:#444">Generador de Actas</b></div>
   <div style="margin-left:auto;display:flex;gap:8px;align-items:center;font-size:11px;color:#555">
     <span id="userBadge" style="display:none"></span>
@@ -330,9 +330,11 @@ function pickEntity(key) {
   root.style.setProperty('--green',    ENT.color.main);
   root.style.setProperty('--green-d',  ENT.color.dark);
   root.style.setProperty('--green-xl', ENT.color.xl);
-  // Cambia el logo del encabezado del acta
+  // Cambia el logo del encabezado del acta y el del nav
   const al = document.getElementById('actaLogo');
   if (al) { al.src = ENT.logo; al.alt = ENT.razonSocialDoc; }
+  const nl = document.getElementById('navLogo');
+  if (nl) { nl.src = ENT.logo; nl.alt = ENT.razonSocialDoc; }
   updateGenBtn();
 }
 
