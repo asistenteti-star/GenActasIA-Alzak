@@ -26,18 +26,18 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Petición al endpoint de salud de Supabase. Una llamada a la API cuenta
-    // como actividad del proyecto y evita la pausa automática del plan Free.
-    // No depende de ninguna tabla concreta, así que es robusto ante el estado
-    // del esquema.
-    const res = await fetch(`${url}/auth/v1/health`, {
+    // Consulta REAL a Postgres (vía PostgREST). La pausa automática de Supabase
+    // se mide por actividad de la BASE DE DATOS — un health check de auth NO
+    // cuenta. Un SELECT contra una tabla sí ejecuta una query en Postgres
+    // (aunque RLS devuelva 0 filas con la clave pública), que es lo que importa.
+    const res = await fetch(`${url}/rest/v1/app_config?select=id&limit=1`, {
       method: "GET",
-      headers: { apikey: key },
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
       cache: "no-store",
     });
 
     return NextResponse.json(
-      { ok: res.ok, status: res.status, pingedAt: new Date().toISOString() },
+      { ok: res.ok, status: res.status, query: "rest/app_config", pingedAt: new Date().toISOString() },
       { status: res.ok ? 200 : 502 },
     );
   } catch (e) {
